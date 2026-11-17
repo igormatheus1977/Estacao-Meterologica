@@ -26,6 +26,7 @@ float inv_b_temp = -0.5652;
 float inv_a_umid = 1.481384;
 float inv_b_umid = -25.527471;
 
+float lum_limite = 20;
 
 // Definição de caracteres especiais do LDC
 
@@ -149,12 +150,20 @@ void loop() {
   umid = dht.readHumidity();                                // Leitura de umidade
   umid_ajustada = umid*inv_a_umid + inv_b_umid;             // Ajuste da umidade
 
-  // LEDS
-  pinMode(4, OUTPUT);                                       // Define o que acontece no pino (saída de tensão)
-  digitalWrite(4, HIGH);                                    // Acende o pino D4
+  // LED
 
-  // Botão
-  pinMode(3, INPUT);
+  if (lum <= lum_limite) {                                  // Se o lum for menor ou igual que o limite:
+    digitalWrite(3, HIGH);                                  // Acende os LEDs no pino D3
+  } else if (lum < 2*lum_limite) {                          // Se for maior que limite, mas menor que 2x ele:
+    for (int i = 0; i < 3; i++) {                           // Para cada i menor 3, e començando em 0, somando i = i + 1
+      digitalWrite(3, HIGH);                                // Acende
+      delay(200);                                           // Intervalo
+      digitalWrite(3, LOW);                                 // Apaga
+      delay(200);                                           // Intervalo
+    }                                                       // 
+  } else {                                                  // Se for maior q 2x:
+    digitalWrite(3, LOW);                                   // Apaga
+  }        
 
   lcd.setCursor(0,0);
   lcd.print("Temperatura:");
