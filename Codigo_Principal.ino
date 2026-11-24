@@ -20,7 +20,7 @@ Mais abaixo está a linha do código para o BMP280
 */
 
 
-float pressao, alt, temp, tensao, temp_ajustada, temp_bin, umid, umid_ajustada, lum_bin, lum, VLDR, RLDR;
+float pressao, alt, temp, temp_ajustada, temp_bin, umid, umid_ajustada, lum_bin, lum, VLDR, RLDR;
 float inv_a_temp = 1.002226;
 float inv_b_temp = -0.5652;
 float inv_a_umid = 1.481384;
@@ -28,7 +28,7 @@ float inv_b_umid = -25.527471;
 
 float lum_limite = 20;
 
-// Definição de caracteres especiais do LDC
+// Definição de caracteres especiais do LCD
 
 byte graus[] = {
   B11100,
@@ -66,6 +66,7 @@ byte aTil[] = {
 void setup() {
 
   Serial.begin(9600);                         // Inicia comunicação serial a 9600 bps de baud rate
+  pinMode(3, OUTPUT);                         // Pino D3 como saída (LEDs)
 
   lcd.init();                                 // Liga o LCD
 
@@ -119,19 +120,19 @@ void loop() {
   /* 
   -- ANALOG REFERENCE -- 
   Define tensão de referência
-  Default - Padrão (5 V ou 3,3 V)
+  Default - Padrão (5 V no Arduino Uno)
   Internal - Baixa tensão para maior precisão (1,1 V)
   External - Tensão aplicada no pino AREF (não utilizada nesse projeto)
   */
   
 
   // Sensor de luminosidade (LDR)
-  analogReference(DEFAULT);                                 // 3,3 V
+  analogReference(DEFAULT);                                 // 5 V (referência do ADC)
   analogRead(A1);                                           // Leitura descartável para estabilizar o ADC
   delay(10);
   lum_bin = analogRead(A1);                                 // Leitura em binário
-  VLDR = lum_bin*5.0/1024;                                  // Binário -> Tensão (V)
-  RLDR = VLDR/(3.3 - VLDR)*100000;                          // Tensão -> Resistência (Ohm)
+  VLDR = lum_bin*5.0/1024;                                  // Binário -> Tensão (V), referência de 5 V
+  RLDR = VLDR/(3.3 - VLDR)*100000;                          // Tensão -> Resistência (Ohm), divisor alimentado em 3,3 V
   lum = pow(10,-1.664902*log10(RLDR) + 7.723045);           // Resistência -> Luminância (lx)
 
   // Sensor de temperatura (LM35)
@@ -149,6 +150,16 @@ void loop() {
   // Sensor de umidade (DHT22)
   umid = dht.readHumidity();                                // Leitura de umidade
   umid_ajustada = umid*inv_a_umid + inv_b_umid;             // Ajuste da umidade
+
+  /*
+  -- CASAS DECIMAIS --
+  Número de casas coerente com a incerteza de cada medição:
+  Temperatura  -> 1 casa  (LM35 ±0,5 °C; passo do ADC ~0,11 °C)
+  Umidade      -> 0 casas (DHT22 ±2 %UR, ampliado pela calibração)
+  Pressão      -> 0 casas em hPa (BMP280 ±1 hPa)
+  Altitude     -> 0 casas (±8 m só pelo sensor)
+  Luminosidade -> 0 casas (LDR, erro da ordem de 10 a 30 %)
+  */
 
   // LED
 
@@ -168,7 +179,7 @@ void loop() {
   lcd.setCursor(0,0);
   lcd.print("Temperatura:");
   lcd.setCursor(0,1);
-  lcd.print(temp_ajustada, 2);
+  lcd.print(temp_ajustada, 1);
   lcd.print(" ");
   lcd.write(byte(0));
   lcd.print("C");
@@ -178,7 +189,7 @@ void loop() {
   lcd.setCursor(0,0);
   lcd.print("Umidade:");
   lcd.setCursor(0,1);
-  lcd.print(umid_ajustada, 1);
+  lcd.print(umid_ajustada, 0);
   lcd.print(" %");
   delay(2000);
   lcd.clear();
@@ -188,16 +199,15 @@ void loop() {
   lcd.write(byte(2));
   lcd.print("o:");
   lcd.setCursor(0,1);  
-  lcd.print(pressao, 2);
-  lcd.print(" ");
-  lcd.print("Pa");  
+  lcd.print(pressao/100.0, 0);                              // Pa -> hPa
+  lcd.print(" hPa");
   delay(2000);
   lcd.clear();
 
   lcd.setCursor(0,0);
   lcd.print("Altitude:");
   lcd.setCursor(0,1);
-  lcd.print(alt);
+  lcd.print(alt, 0);
   lcd.print(" ");
   lcd.print("m");
   delay(2000);
@@ -206,7 +216,7 @@ void loop() {
   lcd.setCursor(0,0);
   lcd.print("Luminosidade:");
   lcd.setCursor(0,1);
-  lcd.print(lum);
+  lcd.print(lum, 0);
   lcd.print(" lx");
   delay(2000);
   lcd.clear();
